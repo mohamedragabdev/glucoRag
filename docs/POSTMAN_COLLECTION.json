@@ -1,0 +1,295 @@
+{
+  "info": {
+    "name": "Medical RAG System API",
+    "description": "Postman Collection for Type 2 Diabetes Screening Medical RAG System API Verification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" },
+    { "key": "rag_service_url", "value": "http://localhost:8001" },
+    { "key": "token", "value": "" },
+    { "key": "conversation_id", "value": "" },
+    { "key": "assistant_message_id", "value": "" },
+    { "key": "internal_secret", "value": "dev_internal_secret_change_in_prod" }
+  ],
+  "item": [
+    {
+      "name": "1. Register Clinician",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.token) {",
+              "    pm.collectionVariables.set('token', jsonData.token);",
+              "}",
+              "pm.test('Status is 201 Created', function() {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dr. Jane Clinician\",\n  \"email\": \"clinician.test@health.org\",\n  \"password\": \"securepassword123\",\n  \"password_confirmation\": \"securepassword123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/register",
+          "host": ["{{base_url}}"],
+          "path": ["register"]
+        }
+      }
+    },
+    {
+      "name": "2. Login Clinician",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.token) {",
+              "    pm.collectionVariables.set('token', jsonData.token);",
+              "}",
+              "pm.test('Status is 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"clinician.test@health.org\",\n  \"password\": \"securepassword123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/login",
+          "host": ["{{base_url}}"],
+          "path": ["login"]
+        }
+      }
+    },
+    {
+      "name": "3. List Conversations (Authenticated)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["conversations"]
+        }
+      }
+    },
+    {
+      "name": "4. Create Conversation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.data && jsonData.data.id) {",
+              "    pm.collectionVariables.set('conversation_id', jsonData.data.id);",
+              "}",
+              "pm.test('Status is 201 Created', function() {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"ADA Universal Screening Criteria\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["conversations"]
+        }
+      }
+    },
+    {
+      "name": "5. Send Message (Async RAG Dispatch)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.data && jsonData.data.assistant_message) {",
+              "    pm.collectionVariables.set('assistant_message_id', jsonData.data.assistant_message.id);",
+              "}",
+              "pm.test('Status is 202 Accepted', function() {",
+              "    pm.response.to.have.status(202);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"content\": \"What is the recommended universal screening age for Type 2 Diabetes according to ADA guidelines?\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/conversations/{{conversation_id}}/messages",
+          "host": ["{{base_url}}"],
+          "path": ["conversations", "{{conversation_id}}", "messages"]
+        }
+      }
+    },
+    {
+      "name": "6. Poll Message Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/messages/{{assistant_message_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["messages", "{{assistant_message_id}}"]
+        }
+      }
+    },
+    {
+      "name": "7. Retrieve Conversation",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/conversations/{{conversation_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["conversations", "{{conversation_id}}"]
+        }
+      }
+    },
+    {
+      "name": "8. Retrieve Conversation Messages",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/conversations/{{conversation_id}}/messages",
+          "host": ["{{base_url}}"],
+          "path": ["conversations", "{{conversation_id}}", "messages"]
+        }
+      }
+    },
+    {
+      "name": "9. Direct RAG Internal Query (Dev Testing)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Internal-Secret", "value": "{{internal_secret}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What are the ADA risk factors for diabetes screening in adults under 35?\",\n  \"conversation_history\": [],\n  \"request_id\": \"postman-direct-test\"\n}"
+        },
+        "url": {
+          "raw": "{{rag_service_url}}/rag/query",
+          "host": ["{{rag_service_url}}"],
+          "path": ["rag", "query"]
+        }
+      }
+    },
+    {
+      "name": "10. Error - Unauthenticated Request (401)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["conversations"]
+        }
+      }
+    },
+    {
+      "name": "11. Error - Empty Message Content (422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"content\": \"\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/conversations/{{conversation_id}}/messages",
+          "host": ["{{base_url}}"],
+          "path": ["conversations", "{{conversation_id}}", "messages"]
+        }
+      }
+    },
+    {
+      "name": "12. Error - Invalid Internal Secret (401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Internal-Secret", "value": "wrong_secret" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"Test question\",\n  \"conversation_history\": [],\n  \"request_id\": \"postman-bad-secret\"\n}"
+        },
+        "url": {
+          "raw": "{{rag_service_url}}/rag/query",
+          "host": ["{{rag_service_url}}"],
+          "path": ["rag", "query"]
+        }
+      }
+    }
+  ]
+}
