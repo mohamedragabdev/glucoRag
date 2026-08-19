@@ -31,7 +31,7 @@ This document provides a step-by-step deployment guide for taking **GlucoRAG** o
                                 │     └────────────────────────┘
                                 ▼
                  ┌─────────────────────────────┐
-                 │    RAG Service (Render)     │
+                 │  RAG Service (Vercel/Render)│
                  │      FastAPI + LangChain    │
                  └──────┬───────────────┬──────┘
                         │               │
