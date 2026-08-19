@@ -4,114 +4,49 @@ This guide provides step-by-step instructions to deploy the **FastAPI + LangChai
 
 ---
 
-## 1. Architecture & Vercel Entry Point
+## 1. Architecture & Native Vercel Entry Point
 
-The RAG service is exposed to Vercel via:
-- **Serverless Entry Point:** [`rag-service/api/index.py`](file:///home/mohamed/github/MRAG/rag-service/api/index.py) (re-exports the existing `app` from `app.main`).
-- **Rewrite Rules:** [`rag-service/vercel.json`](file:///home/mohamed/github/MRAG/rag-service/vercel.json) routes all incoming requests directly to `/api/index.py`.
-
-```
-Incoming Request (e.g. GET /health or POST /rag/query)
-                  │
-                  ▼
-         [ Vercel Edge Router ]
-                  │
-                  ▼ (vercel.json rewrite)
-         [ api/index.py ]
-                  │
-                  ▼
-         [ app.main:app (FastAPI) ]
-```
+The RAG service uses Vercel's native zero-configuration FastAPI discovery:
+- **Serverless Root Entry Point:** [`rag-service/index.py`](file:///home/mohamed/github/MRAG/rag-service/index.py) (exposes the exact `app` instance from `app.main`).
+- Vercel automatically detects `index.py`, maps all routes (`/health`, `/docs`, `/openapi.json`, `/rag/query`, `/rag/ingest`) directly to the FastAPI app without requiring custom rewrite rules or nested `/api` subfolders.
 
 ---
 
-## 2. Prerequisites & GitHub Push
+## 2. Redeployment Commands
 
-Ensure your latest code and Vercel configuration files are committed and pushed to GitHub:
+Commit and push the updated entrypoint to GitHub:
 
 ```bash
 git add .
-git commit -m "feat: prepare RAG service for Vercel deployment"
+git commit -m "fix(rag-service): use native Vercel FastAPI root entrypoint index.py"
 git push origin main
 ```
 
 ---
 
-## 3. Step-by-Step Vercel Deployment
+## 3. Vercel Project Settings
 
-1. Log in to [Vercel](https://vercel.com/).
-2. Click **Add New...** $\rightarrow$ **Project**.
-3. Select and import your GitHub repository (`MRAG` / `glucoRag`).
-4. In the **Configure Project** screen:
-   - **Project Name:** `glucorag-rag` (or your preferred name)
+1. In [Vercel Dashboard](https://vercel.com/):
+   - **Project Name:** `glucorag-rag`
    - **Framework Preset:** `Other`
-   - **Root Directory:** Click **Edit** and select **`rag-service`** (IMPORTANT: do not leave it at root).
-5. In **Environment Variables**, add the following variables:
-
-| Variable Name | Required Value Description | Example / Default |
-|---|---|---|
-| `SUPABASE_URL` | Your Supabase project URL | `https://xidfjvukhkworjszayrr.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase `service_role` secret key | `sb_secret_...` |
-| `OPENROUTER_API_KEY` | Your OpenRouter API Key | `sk-or-v1-...` |
-| `OPENROUTER_MODEL` | OpenRouter Model ID | `openrouter/free` |
-| `EMBEDDING_MODEL` | Embedding Model Name | `text-embedding-3-small` |
-| `EMBEDDING_DIMENSION` | Vector Dimension | `1536` |
-| `CHUNK_SIZE` | Chunk size in characters | `800` |
-| `CHUNK_OVERLAP` | Overlap size in characters | `150` |
-| `TOP_K` | Number of context chunks | `5` |
-| `RAG_INTERNAL_SECRET` | Shared secret between Laravel & RAG | `1eb5de452e9aad63346f4b705dddda179d96b7bba0969855e165195b9ce3e48f` |
-| `ALLOWED_ORIGINS` | *(Optional)* Allowed CORS origins | `https://glucorag.vercel.app,http://localhost:5173` |
-
-6. Click **Deploy**.
-7. Vercel will install dependencies from `requirements.txt`, detect Python runtime, and deploy your serverless application.
+   - **Root Directory:** `rag-service`
+2. **Environment Variables:**
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `OPENROUTER_API_KEY`
+   - `OPENROUTER_MODEL` = `openrouter/free`
+   - `EMBEDDING_MODEL` = `text-embedding-3-small`
+   - `EMBEDDING_DIMENSION` = `1536`
+   - `CHUNK_SIZE` = `800`
+   - `CHUNK_OVERLAP` = `150`
+   - `TOP_K` = `5`
+   - `RAG_INTERNAL_SECRET` = `1eb5de452e9aad63346f4b705dddda179d96b7bba0969855e165195b9ce3e48f`
 
 ---
 
-## 4. Verification & Testing
+## 4. Verification
 
-Once deployed, copy your assigned Vercel URL (e.g. `https://glucorag-rag.vercel.app`).
-
-### A. Health Check Test
-Open in your browser or run in terminal:
-```bash
-curl https://glucorag-rag.vercel.app/health
-```
-**Expected output:**
-```json
-{"status":"ok"}
-```
-
-### B. Root Endpoint Test
-```bash
-curl https://glucorag-rag.vercel.app/
-```
-**Expected output:**
-```json
-{
-  "service": "Medical RAG Service",
-  "scope": "Type 2 Diabetes Screening",
-  "status": "online"
-}
-```
-
----
-
-## 5. Updating Laravel Backend Configuration
-
-In your Laravel backend deployment (on Render or cloud host), update the RAG service URL in its environment variables:
-
-```ini
-RAG_SERVICE_URL=https://glucorag-rag.vercel.app
-RAG_INTERNAL_SECRET=1eb5de452e9aad63346f4b705dddda179d96b7bba0969855e165195b9ce3e48f
-```
-
----
-
-## 6. Local Development Remains Unchanged
-
-You can continue developing and running the RAG service locally with standard uvicorn:
-
-```bash
-cd rag-service
-./venv/bin/uvicorn app.main:app --reload --port 8001
-```
+After deployment:
+- `https://YOUR-RAG-DEPLOYMENT.vercel.app/health` $\rightarrow$ `{"status":"ok"}`
+- `https://YOUR-RAG-DEPLOYMENT.vercel.app/docs` $\rightarrow$ Interactive Swagger UI
+- `https://YOUR-RAG-DEPLOYMENT.vercel.app/` $\rightarrow$ `{"service":"Medical RAG Service", ...}`
