@@ -1,32 +1,45 @@
-FROM php:8.2-cli-alpine
+#!/bin/sh
+set -e
 
-# Install system dependencies & PHP extensions required for Laravel & MySQL
-RUN apk add --no-cache \
-    curl \
-    git \
-    libzip-dev \
-    zip \
-    unzip \
-    oniguruma-dev \
-    mariadb-client \
-    && docker-php-ext-install pdo pdo_mysql mbstring bcmath zip pcntl
+echo "==> Running Laravel deployment tasks..."
 
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Clear old cached configuration
+php artisan config:clear || true
 
-WORKDIR /var/www/html
+# Clear application cache
+php artisan cache:clear || true
 
-# Copy application files
-COPY . .
+# Run database migrations
+echo "==> Running migrations..."
+php artisan migrate --force
 
-# Install PHP dependencies without dev packages for production
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Cache Laravel configuration and routes
+echo "==> Caching Laravel configuration..."
+php artisan config:cache
 
-# Create necessary directories and adjust permissions
-RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache \
-    && chmod +x docker-entrypoint.sh
+echo "==> Caching Laravel routes..."
+php artisan route:cache
 
-EXPOSE 8000
+# Ensure Laravel storage directories exist
+echo "==> Preparing storage directories..."
+mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+chmod -R 775 storage bootstrap/cache || true
+
+# Start Laravel queue worker in background
+echo "==> Starting Laravel queue worker..."
+php artisan queue:work \
+    --sleep=2 \
+    --tries=3 \
+    --timeout=60 \
+    --max-jobs=250 &
+
+# Start Laravel HTTP server
+echo "==> Starting Laravel API server on 0.0.0.0:8000..."
+
+exec php -S 0.0.0.0:8000 -t public
